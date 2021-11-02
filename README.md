@@ -376,3 +376,45 @@ var Circle = function Circle() {
 babel-runtime 是为了减少重复代码而生的。 babel 生成的代码，可能会用到一些\_extend()， classCallCheck() 之类的工具函数，默认情况下，这些工具函数的代码会包含在编译后的文件中。如果存在多个文件，那每个文件都有可能含有一份重复的代码。
 
 babel/plugin-transform-runtime 插件能够将这些工具函数的代码转换成 require 语句，指向为对 babel-runtime 的引用，如 require('babel-runtime/helpers/classCallCheck'). 这样， classCallCheck 的代码就不需要在每个文件中都存在了。
+
+二、 Babel 插件开发
+
+> webpack、lint、babel 等很多工具和库的核心都是通过抽象语法树(AST)来实现对代码的处理
+
+1. AST
+
+所谓抽象语法树就是通过 JavaScript Parse 将代码转化为一棵抽象语法树, 这棵树定义了代码的结构, 然后荣归操纵这棵树的增删改查实现对代码的分析, 变更, 优化
+
+针对将代码转化为不同的 AST 你可以在这里 [astexplorer](https://astexplorer.net/) 目前主流任何解析器的 AST 转化。
+
+一些参考网站
+
+- [astexplorer](https://astexplorer.net/): 这是一个在线的代码转译器，他可以按照目前业界主流的方式将任何代码转为 AST。
+- [babel-handlebook](): babel 插件开发中文手册文档。
+- [the-super-tiny-compiler-cn](https://github.com/starkwang/the-super-tiny-compiler-cn): 一个 github 上的开源小型 listp 风格转化 js 编译器
+
+2. babel 插件开发基础指南
+
+当我们需要开发一款属于自己的 babel 插件时, 通常我们会借助 babel 的一些库去进行代码的 parser 以及 transform ast, generator code, 并不需要我们去手动对代码进行词法/语法分析过程
+
+插件开发通常会涉及这些库:
+
+- @babel/core: babel/core 是 babel 的核心库，核心的 api 都在这里。比如上边我们讲到的 transform，parse 方法。
+- @babel/parser: babel 解析器
+- @babel/types: 这个模块包含手动构建 AST 和检查 AST 节点类型的方法(比如通过对应的 api 生成对应的节点)
+- @babel/traverse: 这个模块用于 AST 的遍历, 它维护了整棵树的状态(需要注意的是 traverse 对于 ast 是一种深度递归)
+- @babel/generator: 这个模块用于代码的生成, 通过 AST 生成新的代码返回
+
+3. babel 的工作流程
+
+- Parse(解析阶段): 这个阶段将我们的 js 代码(字符串)进行词法分析生成一系列 tokens, 之后在进行语法分析将 tokens 组合成为一颗语法树(比如 babel-parser 它的作用就是这一步)
+- Transform(转化阶段): 这个阶段 babel 通过对于这棵树的遍历, 从而对呀旧的 AST 进行增删改查, 将新的 js 语法节点转化称为浏览器兼容的语法节点(babel/traverse 就是在这一步进行遍历这棵树)
+- Generator(生成阶段): 这个阶段 babel 会将新的 AST 转化为同样进行深度遍历从而生成新的代码(@babel/generator)
+
+![babel工作流程](./images/babel-ast.webp)
+
+4. babel 中 AST 的遍历过程
+
+- AST 是所谓的深度优先遍历
+- babel 中 AST 节点的遍历是基于一种访问者模式(Visitor), 不同的访问者会执行不同的操作从而得到不同的结果
+- visitor 上挂载了以每个节点命名的方法, 当进行 AST 遍历时就好触发匹配的方法名从而执行对应方法进行操作
