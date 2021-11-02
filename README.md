@@ -468,7 +468,7 @@ const babel = require('@babel/core');
 const babelTypes = require('@babel/types');
 
 /**转化箭头函数的插件*/
-const arrowFunc = require('@babel/plugin-transform-arrow-function');
+const arrowFunc = require('@babel/plugin-transform-arrow-functions');
 
 const sourceCode = `const arrowFunc = () => { console.log(this) }`;
 
