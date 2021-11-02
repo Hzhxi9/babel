@@ -234,3 +234,145 @@ bebel-preset-env 仅仅之后转化最新的 es 语法, 并不会转化对应的
           ]
         }
         ```
+
+      - 关于 usage 和 entry 存在一个需要注意的本质上的区别
+
+        - 以项目引入 Promise 为例, 当我们配置 useBuildIns: entry 时, 仅仅在入口文件全量引入一次 polyfill。 可以这样理解:
+
+          ```js
+          // 当使用entry配置时
+          // 一些系列实现polyfill的方法
+          global.Promise = promise;
+
+          // 其他文件使用时
+          const a = new Promise();
+          ```
+
+        - 而当我们使用 useBuildIns: usage, preset-env 只能基于各个模块去分析它们使用的 pilyfill 从而进行引入
+
+          preset-env 会帮助我们智能化的在需要的地方引入, 比如:
+
+          ```js
+          // a.js
+          import 'core-js/modules/es.promise';
+          ```
+
+          ```js
+          // b.js
+          import 'core-js/modules/es.promise';
+          ```
+
+          在 usage 情况下, 如果我们存在很多模块, 那么无疑会多出很多冗余代码(import 语法)
+
+          同样在使用 usage 时因为是模块内部局部引入 polyfill, 所以并不会污染全局变量, 而 entry 是挂载在全局中所以会污染全局变量
+
+        - usageBuildIns 不同参数分别有不同场景的适应度，具体参数使用场景还需要大家结合自己的项目实际情况找到最佳方式。
+
+10. @babel/runtime
+
+@babel/polyfill 是存在污染全局变量的副作用, 在实现 polyfill 时 babel 还提供了另外一种方式去让我们实现这功能, 那就是@babel/runtime
+
+简单来说, @babel/runtime 更像一种按需加载的解决方案, 比如哪里需要使用到 Promise, @babel/runtime 就会给他的文件顶部添加`import promise from 'babel-runtime/core-js/promise'`
+
+同时上边我们讲到对应 preset-env 的 useBuildIns 配置项, 我们的 polyfill 是 preset-env 帮我们智能引入
+
+而 babel-runtime 则会将引入方式交给我们, 需要什么自己引入什么
+
+它的用法很简单, 只能我们去安装`npm install --save @babel/runtime`后, 在需要使用对应的 polyfill 的地方去单独引入就可以了
+
+```js
+// a.js 中需要使用Promise, 我们需要手动引入对应的运势polyfill
+import Promise from 'babel-runtime/core-js/promise';
+const promise = new Promise();
+```
+
+总言而之, babel/runtime 可以理解为就是一个运行时"哪里需要引哪里"的工具库
+
+> 针对 babel/runtime 绝大多数情况下我们都会配合@babel/plugin-transform-runtime 进行使用达到智能化 runtime 的 polyfill 引入
+
+11. @babel/plugin-transform-runtime
+
+- babel-runtime 存在的一些问题
+
+babel-runtime 在我们手动引入一些 polyfill 的时候, 它会给我们的代码注入一些类似`_extend()、classCallCheck()`之类的工具函数, 这些工具函数的代码会包含在编译后 deeming 文件中
+
+```js
+class Circle {}
+// babel-runtime 编译Class需要借助_classCallCheck这个工具函数
+function _classCallCheck(instance, Constructor) {
+  /***/
+}
+var Circle = function Circle() {
+  _classCallCheck(this, Circle);
+};
+```
+
+如果我们项目中存在多个文件使用了 class, 那么无疑在每个文件中注入这样一段冗余重复的工具是一种灾难
+
+针对上述提到的两个问题:
+
+- babel-runtime 无法做到智能化分析, 需要我们手动引入
+- babel-runtime 编译过程中会重复生成冗余代码
+
+此时就需要用到@babel/plugin-transform-runtime
+
+- @babel/plugin-transform-runtime 的作用
+
+@babel/plugin-transform-runtime 插件的作用就是为了解决上述提到 babel-runtime 存在的问题而提出的插件
+
+- babel-runtime 无法做到智能化分析, 需要我们手动引入
+
+  @babel/plugin-transform-runtime 插件会智能化的分析我们项目中所有使用到需要转译的 js 代码, 从而实现模块化从 babel-runtime 中引入所需的 polyfill 实现
+
+- babel-runtime 编译过程中会重复生成冗余代码
+
+  @babel/plugin-transform-runtime 插件提供了一个 helpers 参数。具体可以[查阅参数](https://babeljs.io/docs/en/babel-plugin-transform-runtime#helpers)
+
+  这个 helpers 参数开启后可以将上边提到编译阶段重复的工具函数, 比如 classCallCheck、 extends 等代码转化称为 require 语句。 此时这些工具函数就不会重复的出现在使用中的模块中了
+
+  ```js
+  // @babel/plugin-transform-runtime 会将工具函数转化为require语句进行引入
+  // 而非runtime那样直接将工具函数模块注入到模块中
+  var _classCallCheck = require('@babel/runtime/helpers/classCallCheck');
+  var Circle = function Circle() {
+    _classCallCheck(this, Circle);
+  };
+  ```
+
+- 配置@babel/plugin-transform-runtime
+
+[配置地址](https://babeljs.io/docs/en/babel-plugin-transform-runtime)
+
+```json
+// 默认配置
+{
+  "plugins": [
+    [
+      "@babel/plugin-transform-runtime",
+      {
+        "absoluteRuntime": false,
+        "corejs": false,
+        "helpers": true,
+        "regenerator": true,
+        "version": "7.0.0-beta.0"
+      }
+    ]
+  ]
+}
+```
+
+12. 总结 polyfill
+
+在 babel 中实现 polyfill 主要有两种方式
+
+- 通过@babel/polyfill 配合 preset-env 去使用, 这种方式可能会存在污染全局作用域
+- 通过@babel/runtime 配合@babel/plugin-transform 去使用, 这种方式并不会污染作用域
+- 全局引入会污染全局作用域, 但是相对于局部引入来说, 它会增加很对额外的引入语句, 增加包体积
+
+在 useBuildIns: usage 情况下其实和@babel/plugin-transform-runtime 情况下是类似的作用
+
+建议: 在开发类库时遵守不污染全局为首先使用 @babel/plugin-transform-runtime, 而在业务开发中使用@babel-polyfill
+
+babel-runtime 是为了减少重复代码而生的。 babel 生成的代码，可能会用到一些\_extend()， classCallCheck() 之类的工具函数，默认情况下，这些工具函数的代码会包含在编译后的文件中。如果存在多个文件，那每个文件都有可能含有一份重复的代码。
+
+babel/plugin-transform-runtime 插件能够将这些工具函数的代码转换成 require 语句，指向为对 babel-runtime 的引用，如 require('babel-runtime/helpers/classCallCheck'). 这样， classCallCheck 的代码就不需要在每个文件中都存在了。
