@@ -438,8 +438,47 @@ function arrowFunc() {
 
 2. babel 原版转换方式
 
-
 ```js
+/**
+ * babel 插件
+ *
+ * 主要还是 @babel/core 中的 transform、parse 对 AST 的处理以及babel/types中各种转化规则
+ *
+ * AST 是一种深度优先遍历, 内部使用访问者(visitor)模式
+ *
+ * babel主要也是做的AST的转化
+ *
+ * 1. 词法分析 tokens:  var a = 1 => ['var', 'a', '=', '1']
+ * 2. 语法分析: 将 tokens按照固定规则生成AST语法树
+ * 3. 语法树转化: 在旧的语法树基础上进行增删改查, 生成新的语法树
+ * 4. 生成代码: 根据新的Tree生成新的代码
+ *
+ *
+ * babel核心库(包含core) => AST => code的转化实现
+ *
+ * babel/core, 其实就可以相当于esprima + Estraverse + EScodegen
+ * 它会将原本的sourceCode转化为AST语法树
+ * 遍历老的语法树, 会检查传入的插件或则第三个参数中传入的visitor修改对应匹配的节点
+ * 生成新的语法树
+ * 之后生成新的代码地址
+ */
+const babel = require('@babel/core');
 
+/**babel/types 工具库, 该模块包含手动构建TS的方法, 并检查AST节点的类型(根据不同节点类型进行转化实现)*/
+const babelTypes = require('@babel/types');
 
+/**转化箭头函数的插件*/
+const arrowFunc = require('@babel/plugin-transform-arrow-function');
+
+const sourceCode = `const arrowFunc = () => { console.log(this) }`;
+
+/**
+ * 使用babel/core, 它的transform方法回将我们的代码转换为AST
+ * 同事进入plugins处理成为新的AST, 最终生成对应的代码
+ */
+const targetCode = babel.transform(sourceCode, {
+  plugins: [arrowFunc],
+});
+
+console.log(targetCode);
 ```
