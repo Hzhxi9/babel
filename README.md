@@ -482,3 +482,9 @@ const targetCode = babel.transform(sourceCode, {
 
 console.log(targetCode);
 ```
+
+3. 插件开发流程
+
+- 通过源代码和转译后代码进行 AST 节点进行对比, 找出对应的区别节点, 尽量复用之前的节点
+- 存在修改/增加/删除的节点, 通过 nodePath 中的 API 调用对应的方法进行 AST 处理
+- [babel插件开发 API查询](https://github.com/jamiebuilds/babel-handbook/blob/master/translations/zh-Hans/plugin-handbook.md)
