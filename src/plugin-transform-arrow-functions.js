@@ -41,6 +41,8 @@ function ArrowFunctionExpression(path) {
  */
 function hoistFunctionEnvironment(nodePath) {
   /**
+   * nodePath.findParent(p => {}): 找到特定的父路径
+   * 
    * 往上查找 直到找到最近顶部非箭头函数的this p.isFunction() && !p.isArrowFunctionExpression()
    * 或者找到根节点 p.isProgram()
    */
