@@ -17,4 +17,4 @@ const target = babel.transform(sourceCode, {
 });
 
 /**编译后的代码 */
-console.log(target);
+console.log(target.code);

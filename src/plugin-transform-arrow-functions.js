@@ -30,7 +30,7 @@
 const babelTypes = require('@babel/types');
 
 function ArrowFunctionExpression(path) {
-  const code = path.node;
+  const node = path.node;
   hoistFunctionEnvironment(path);
   node.type = 'FunctionDeclaration';
 }
@@ -51,8 +51,8 @@ function hoistFunctionEnvironment(nodePath) {
   /**
    * 接下来查找当前作用域中国呢哪些地方用到了this的节点路径
    */
-  const thisPath = getScopeInfoInformation(thisEnvFn);
-  const thisBindingName = generateBindName(thisEnvFn);
+  const thisPaths = getScopeInfoInformation(thisEnvFn);
+  const thisBindingsName = generateBindName(thisEnvFn);
 
   /**
    * thisEnvFn 中添加一个变量, 变量名: thisBindingsName, 变量值为 this
@@ -63,13 +63,13 @@ function hoistFunctionEnvironment(nodePath) {
      * 调用babelTypes中生成对应节点
      * 详细你可以在这里查阅到 https://babeljs.io/docs/en/babel-types
      */
-    id: babelTypes.identifier(thisBindingName),
+    id: babelTypes.Identifier(thisBindingsName),
     init: babelTypes.thisExpression(),
   });
 
-  thisPath.forEach(thisPath => {
+  thisPaths.forEach(thisPath => {
     /**将this替换成_this */
-    const replaceNode = babelTypes.identifier(thisBindingName);
+    const replaceNode = babelTypes.Identifier(thisBindingsName);
     thisPath.replaceWith(replaceNode);
   });
 }
@@ -79,7 +79,7 @@ function hoistFunctionEnvironment(nodePath) {
  * @param {*} nodePath 节点路径
  */
 function getScopeInfoInformation(nodePath) {
-  const thisPath = [];
+  const thisPaths = [];
   /**
    * 调用nodePath中的traverse方法进行便利
    * https://github.com/jamiebuilds/babel-handbook/blob/master/translations/zh-Hans/plugin-handbook.md
@@ -88,12 +88,12 @@ function getScopeInfoInformation(nodePath) {
     /**
      * 深度遍历节点路径, 找到内部this语句
      */
-    thisExpression(thisPath) {
-      thisPath.push(thisPath);
+    ThisExpression(thisPath) {
+      thisPaths.push(thisPath);
     },
   });
 
-  return thisPath;
+  return thisPaths;
 }
 
 /**
@@ -107,10 +107,9 @@ function generateBindName(path, name = '_this', n = '') {
   return name;
 }
 
-
 module.exports = {
-    hoistFunctionEnvironment,
-    arrowFunctionPlugin: {
-        visitor: { ArrowFunctionExpression }
-    }
-}
+  hoistFunctionEnvironment,
+  arrowFunctionPlugin: {
+    visitor: { ArrowFunctionExpression },
+  },
+};

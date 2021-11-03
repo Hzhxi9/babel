@@ -8,4 +8,4 @@ const targetCode = babel.transform(sourceCode, {
   plugins: [sourceFunc],
 });
 
-console.log(targetCode);
+console.log(targetCode.code);
